@@ -1,0 +1,30 @@
+---
+title: "Final Project Data Wrangling"
+author: "Rhett Reyes"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) 
+library(tidyverse) 
+library(readr) 
+library(janitor)
+```
+
+```{r}
+climate_change_usa <- read_csv("Data Frames (csv)/climate-change_usa.csv")
+climdiv_county_year <- read_csv("Data Frames (csv)/climdiv_county_year.csv")
+```
+
+```{r}
+names(climate_change_usa) <- names(climate_change_usa) %>% 
+  make_clean_names() 
+clean_climate_change_usa <- climate_change_usa %>%
+  filter(row_number() != 1)  
+```
+
+```{r}
+
+```
+
