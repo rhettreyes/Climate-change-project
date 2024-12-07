@@ -1,0 +1,104 @@
+---
+title: "Stat295 Projj"
+author: "Rhett Reyes"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(readr)
+library(janitor)
+library(maps)
+library(tigris)
+library(sf) 
+library(gganimate) 
+rm(list = ls())
+```
+
+## Uploading datasets 
+```{r}
+climate_change_usa <- read_csv("climate-change_usa.csv")
+climdiv_county_year <- read_csv("climdiv_county_year.csv") 
+climdiv_state_year <- read_csv("climdiv_state_year.csv") 
+```
+
+## Check for outliers
+```{r}
+climdiv_county_year |> ggplot(aes(y=temp)) + geom_boxplot()
+```
+
+
+## Preparing county data for graph 
+```{r}
+us_counties <- counties(cb = TRUE, year = 2022, class = "sf") #Getting the total list of counties in the United States to cover any blank space from missing counties
+glimpse(us_counties)
+climdiv_county_year <- climdiv_county_year %>% rename(GEOID = fips)
+climdiv_county_year$GEOID <- as.character(climdiv_county_year$GEOID)
+# Join the temperature data with the spatial data
+map_data <- us_counties %>%
+  left_join(climdiv_county_year, by = "GEOID")
+```
+
+## Big County Dataset (Use TBD) 
+```{r}
+common_crs <- st_crs(4326)
+us_counties <- st_transform(us_counties, common_crs)
+USA_by_Temp <- st_sf(
+  GEOID = character(),
+  year = integer(),
+  temperature = numeric(),
+  geometry = st_sfc(crs = common_crs)  # Create an empty geometry column with the common CRS
+)
+for(i in 1895:2019){
+test_map5 <- map_data %>%
+  filter(year == i)
+test_map_df <- st_drop_geometry(test_map5)
+us_counties <- us_counties %>% mutate(year = i)
+test_map5 <- us_counties %>%
+  left_join(test_map_df)
+USA_by_Temp <- bind_rows(USA_by_Temp,test_map5)
+  }
+```
+
+## US graph by county of temperature in 2019(might compare to an earlier year)
+```{r}
+ggplot(USA_by_Temp %>% filter(year==2019)) +
+  geom_sf(aes(fill = temp)) +
+  scale_fill_viridis_c(option = "plasma",na.value = "gray", name = "Temperature") + #make any missing values gray
+  theme_minimal() +
+  labs(
+    title = "US County-Level Temperatures",
+    subtitle = "Temperatures by County",
+    caption = "Data source: climdiv_county_year.csv"
+  ) +
+   coord_sf(datum = NA,   #Keeping it in the Mainland
+          xlim = c(-125, -65),
+          ylim = c(24, 50))
+```
+
+## Preparing state data for graphing
+```{r}
+climdiv_state_year$fips <- sprintf("%02d", climdiv_state_year$fips) 
+states <- states(cb = TRUE, resolution = "20m") 
+map_data <- states %>%
+  left_join(climdiv_state_year, by = c("STATEFP" = "fips")) 
+map_data <- map_data %>%
+  filter(!is.na(year)) %>%  # Remove rows with NA years
+  mutate(year = as.numeric(year))
+```
+
+## Animation
+```{r}
+st_crs(map_data) <- 4326 
+
+anim2 <- ggplot(data = map_data) +
+  geom_sf(aes(fill = temp), color = "white") +
+  scale_fill_viridis_c(option = "magma", name = "Avg Temp (°F)") +
+  theme_minimal() +
+  labs(title = "Average Temperature by State",
+       subtitle = "Year: {current_frame}") + transition_manual(frames = year) 
+
+animate(anim2)
+```
+
