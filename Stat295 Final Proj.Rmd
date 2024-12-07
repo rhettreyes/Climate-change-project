@@ -99,6 +99,6 @@ anim2 <- ggplot(data = map_data) +
   labs(title = "Average Temperature by State",
        subtitle = "Year: {current_frame}") + transition_manual(frames = year) 
 
-animate(anim2)
+animate(anim2, nframes = length(unique(map_data$year)), start_pause = 5, end_pause = 5)
 ```
 
